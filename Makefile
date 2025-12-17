@@ -27,7 +27,7 @@ install:
 
 start:
 	@echo "Starting all services..."
-	docker-compose up -d
+	docker compose up -d
 	@echo "Waiting for services to be ready..."
 	@sleep 20
 	@echo "Services started successfully!"
@@ -41,7 +41,7 @@ start:
 
 stop:
 	@echo "Stopping all services..."
-	docker-compose down
+	docker compose down
 
 setup-kind:
 	@echo "Creating kind cluster..."
@@ -98,7 +98,7 @@ terraform-destroy:
 
 status:
 	@echo "=== Docker Containers ==="
-	@docker-compose ps
+	@docker compose ps
 	@echo ""
 	@echo "=== Kind Clusters ==="
 	@kind get clusters || echo "No kind clusters found"
@@ -108,11 +108,11 @@ status:
 
 logs:
 	@echo "Showing logs from all services..."
-	docker-compose logs -f
+	docker compose logs -f
 
 clean:
 	@echo "Cleaning up..."
-	docker-compose down -v
+	docker compose down -v
 	kind delete cluster --name localbuild-cluster || true
 	@echo "Cleanup complete!"
 

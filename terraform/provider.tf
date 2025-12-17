@@ -10,15 +10,13 @@ terraform {
 
   # Store Terraform state in LocalStack S3
   backend "s3" {
-    bucket         = "terraform-state-bucket"
-    key            = "localbuild/terraform.tfstate"
-    region         = "us-east-1"
-    endpoint       = "http://localhost:4566"
-
+    bucket                      = "terraform-state-bucket"
+    key                         = "localbuild/terraform.tfstate"
+    region                      = "us-east-1"
+    endpoint                    = "http://localhost:4566"
     skip_credentials_validation = true
     skip_metadata_api_check     = true
-    skip_requesting_account_id  = true
-    use_path_style              = true
+    force_path_style            = true
   }
 }
 
