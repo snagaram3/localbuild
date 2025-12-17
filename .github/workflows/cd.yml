@@ -1,0 +1,87 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches: [main]
+
+jobs:
+  deploy-to-kind:
+    name: Deploy to Kind Cluster
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kind
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: localbuild-cluster
+          config: kubernetes/kind-config.yaml
+
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Load Docker image to kind
+        run: |
+          docker load < localbuild-app.tar.gz
+          kind load docker-image localbuild-app:latest --name localbuild-cluster
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f kubernetes/namespace.yaml
+          kubectl apply -f kubernetes/configmap.yaml
+          kubectl apply -f kubernetes/deployment.yaml
+          kubectl apply -f kubernetes/service.yaml
+          kubectl apply -f kubernetes/ingress.yaml
+          kubectl apply -f kubernetes/hpa.yaml
+
+      - name: Wait for deployment
+        run: |
+          kubectl wait --for=condition=available --timeout=300s \
+            deployment/localbuild-app -n localbuild-app
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n localbuild-app
+          kubectl get svc -n localbuild-app
+
+  deploy-terraform:
+    name: Deploy Terraform to LocalStack
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start LocalStack
+        run: |
+          docker-compose up -d localstack
+          sleep 30
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve
+
+      - name: Terraform Output
+        working-directory: ./terraform
+        run: terraform output
